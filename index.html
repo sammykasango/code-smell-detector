@@ -722,12 +722,139 @@ footer {
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .author-inner { flex-direction: column; align-items: flex-start; }
   .nav-links { display: none; }
+  .hero-subtitle { font-size: 16px; }
+  .hero-title { font-size: clamp(32px, 5vw, 56px); }
+  .section-title { font-size: clamp(24px, 4vw, 40px); }
+  .detectors-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .hero-actions { flex-direction: column; }
+  .hero-actions a { width: 100%; text-align: center; }
 }
+
+@media (max-width: 768px) {
+  .wrap { padding: 0 24px; }
+  .hero { padding: 100px 0 60px; }
+  .section { padding: 80px 0; }
+  .arch-section { padding: 80px 0; }
+  .quickstart { padding: 80px 0; }
+  .formats { padding: 80px 0; }
+  .metrics { padding: 80px 0; }
+  .nav-inner { height: 48px; padding: 0 24px; }
+  .hero-grid { gap: 40px; }
+  .arch-grid { gap: 40px; }
+  .hero-stats { gap: 24px; flex-direction: row; }
+  .stat-n { font-size: 28px; }
+  .stat-l { font-size: 10px; }
+  .detectors-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); margin-top: 48px; }
+  .detector-card { padding: 24px; }
+  .terminal-body { min-height: 320px; font-size: 11px; padding: 16px 20px; }
+  .qs-grid { grid-template-columns: 1fr; }
+  .code-block { font-size: 11px; overflow-x: auto; }
+  .author-inner { gap: 24px; }
+  .author-avatar { width: 56px; height: 56px; font-size: 18px; }
+  .author-name { font-size: 18px; }
+  .author-links { flex-direction: column; width: 100%; }
+  .author-link { width: 100%; justify-content: center; }
+}
+
 @media (max-width: 600px) {
   .wrap { padding: 0 20px; }
-  .metrics-grid { grid-template-columns: 1fr 1fr; }
-  .hero-stats { gap: 20px; }
-  .stat-n { font-size: 24px; }
+  .hero { min-height: auto; padding: 100px 0 50px; }
+  .section { padding: 60px 0; }
+  .arch-section { padding: 60px 0; }
+  .quickstart { padding: 60px 0; }
+  .formats { padding: 60px 0; }
+  .metrics { padding: 60px 0; }
+  body { font-size: 13px; }
+  .nav-inner { padding: 0 20px; }
+  .nav-logo { font-size: 12px; gap: 6px; }
+  .nav-cta { padding: 6px 14px; font-size: 10px; }
+  .hero-eyebrow { font-size: 10px; }
+  .hero-title { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; }
+  .hero-subtitle { font-size: 15px; margin-bottom: 24px; }
+  .hero-stats { gap: 16px; padding-bottom: 24px; flex-wrap: wrap; }
+  .stat-item { flex: 1; min-width: 70px; }
+  .stat-n { font-size: 22px; }
+  .stat-l { font-size: 9px; }
+  .hero-actions { gap: 12px; flex-direction: column; }
+  .btn-primary, .btn-secondary { padding: 12px 20px; font-size: 11px; width: 100%; justify-content: center; }
+  .section-label { font-size: 10px; }
+  .section-title { font-size: clamp(20px, 4vw, 32px); }
+  .section-desc { font-size: 14px; }
+  .detectors-grid { grid-template-columns: 1fr; margin-top: 40px; gap: 1px; }
+  .detector-card { padding: 20px; }
+  .detector-icon { width: 36px; height: 36px; font-size: 16px; margin-bottom: 16px; }
+  .detector-name { font-size: 15px; }
+  .detector-desc { font-size: 11px; }
+  .detector-config { font-size: 10px; padding: 5px 10px; }
+  .arch-layers { gap: 1px; }
+  .arch-layer { padding: 16px 12px; font-size: 12px; }
+  .layer-num { font-size: 10px; }
+  .layer-name { font-size: 12px; }
+  .layer-files { font-size: 9px; margin-left: 12px; }
+  .arch-detail { padding: 24px; min-height: auto; position: static; top: auto; }
+  .arch-detail-title { font-size: 18px; }
+  .arch-detail-sub { font-size: 10px; }
+  .arch-detail-desc { font-size: 12px; }
+  .arch-file { font-size: 10px; padding: 6px 10px; }
+  .qs-step { padding: 30px 20px; }
+  .step-num { font-size: 36px; margin-bottom: 12px; }
+  .step-title { font-size: 16px; margin-bottom: 10px; }
+  .step-desc { font-size: 11px; margin-bottom: 16px; }
+  .code-block { padding: 12px 16px; font-size: 10px; }
+  .copy-btn { font-size: 9px; padding: 3px 8px; }
+  .terminal { box-shadow: 0 0 0 1px var(--border), 0 16px 32px rgba(0,0,0,0.6); }
+  .terminal-bar { padding: 10px 12px; }
+  .t-title { font-size: 10px; }
+  .terminal-body { min-height: 280px; padding: 12px 16px; font-size: 10px; line-height: 1.6; }
+  .formats-tabs { flex-wrap: wrap; }
+  .fmt-tab { padding: 12px 20px; font-size: 10px; }
+  .fmt-panel { padding: 20px; min-height: 200px; }
+  .fmt-output { font-size: 10px; }
+  .metrics-grid { grid-template-columns: 1fr; gap: 1px; }
+  .metric-card { padding: 32px 24px; }
+  .metric-n { font-size: 40px; }
+  .metric-l { font-size: 10px; }
+  .author-strip { padding: 40px 0; }
+  .author-info { gap: 16px; }
+  .author-avatar { width: 48px; height: 48px; font-size: 16px; }
+  .author-name { font-size: 16px; }
+  .author-handle { font-size: 11px; }
+  .author-bio { font-size: 11px; max-width: none; }
+  .author-link { font-size: 10px; padding: 8px 16px; }
+  footer { padding: 32px 0; }
+  .footer-inner { flex-direction: column; gap: 16px; }
+  .footer-copy { font-size: 11px; }
+  .footer-links { gap: 16px; }
+  .footer-links a { font-size: 10px; }
+  .glow-1, .glow-2 { opacity: 0.5; }
+}
+
+@media (max-width: 480px) {
+  .wrap { padding: 0 16px; }
+  .hero { padding: 80px 0 40px; }
+  .section { padding: 50px 0; }
+  .hero-title { font-size: clamp(24px, 5vw, 36px); }
+  .hero-subtitle { font-size: 14px; }
+  .hero-stats { gap: 12px; padding-bottom: 20px; }
+  .stat-item { min-width: 60px; }
+  .stat-n { font-size: 18px; }
+  .btn-primary, .btn-secondary { padding: 10px 16px; font-size: 10px; }
+  .section-title { font-size: clamp(18px, 4vw, 28px); }
+  .detectors-grid { margin-top: 32px; }
+  .detector-card { padding: 16px; }
+  .detector-icon { width: 32px; height: 32px; font-size: 14px; margin-bottom: 12px; }
+  .detector-name { font-size: 14px; margin-bottom: 6px; }
+  .detector-desc { font-size: 10px; margin-bottom: 12px; }
+  .arch-detail { padding: 20px; }
+  .arch-detail-title { font-size: 16px; margin-bottom: 6px; }
+  .qs-step { padding: 24px 16px; }
+  .step-num { font-size: 32px; margin-bottom: 10px; }
+  .step-title { font-size: 15px; }
+  .terminal-body { min-height: 240px; padding: 10px 14px; font-size: 9px; }
+  .metric-card { padding: 24px 16px; }
+  .metric-n { font-size: 32px; }
+  .author-avatar { width: 44px; height: 44px; font-size: 14px; }
+  .author-name { font-size: 15px; }
 }
 
 /* ── Scroll reveal ── */
