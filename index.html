@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Code Smell Detector — C++17 Static Analysis Tool | Sammy M. Kasango</title>
+<meta name="description" content="A modular C++17 static analysis tool that detects 7 code smells including God Class, Dead Code, Magic Numbers, and Deep Nesting. Open source by Sammy M. Kasango."/>
+<meta name="keywords" content="code smell detector, C++ static analysis, dead code, god class, magic numbers, deep nesting, open source, developer tools, Sammy Kasango"/>
+<meta name="author" content="Sammy M. Kasango"/>
+<meta property="og:title" content="Code Smell Detector — C++17 Static Analysis"/>
+<meta property="og:description" content="7 detectors. Zero dependencies. One binary. Detect code smells in any C++ codebase instantly."/>
+<meta property="og:url" content="https://sammykasango.github.io/code-smell-detector/"/>
+<meta property="og:type" content="website"/>
+<link rel="canonical" href="https://sammykasango.github.io/code-smell-detector/"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+
+<style>
+:root {
+  --bg:         #070a0f;
+  --bg2:        #0c1018;
+  --bg3:        #111826;
+  --border:     #1a2535;
+  --border2:    #243044;
+  --amber:      #f5a623;
+  --amber-dim:  #7a5010;
+  --cyan:       #00e5ff;
+  --cyan-dim:   #004d60;
+  --red:        #ff4d6d;
+  --green:      #39ff8a;
+  --text:       #c8d8f0;
+  --text-dim:   #4a6080;
+  --text-mid:   #7a9abf;
+  --mono:       'Space Mono', monospace;
+  --sans:       'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── Scanline overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Noise texture ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.4;
+}
+
+/* ── Grid background ── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Glow blobs ── */
+.glow-1 {
+  position: fixed;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,229,255,0.04) 0%, transparent 70%);
+  top: -200px; right: -200px;
+  pointer-events: none; z-index: 0;
+}
+.glow-2 {
+  position: fixed;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(245,166,35,0.05) 0%, transparent 70%);
+  bottom: 10%; left: -150px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ── Layout ── */
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,10,15,0.85);
+  backdrop-filter: blur(12px);
+}
+.nav-inner {
+  max-width: 1200px; margin: 0 auto; padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+.nav-logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  display: flex; align-items: center; gap: 10px;
+}
+.nav-logo-bracket { color: var(--text-dim); }
+.nav-links { display: flex; gap: 32px; }
+.nav-links a {
+  color: var(--text-mid);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--cyan); }
+.nav-cta {
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 18px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.nav-cta:hover {
+  background: var(--amber);
+  color: var(--bg);
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 120px 0 80px;
+  position: relative;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+.hero-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block;
+  width: 32px; height: 1px;
+  background: var(--amber);
+}
+.hero-title {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: clamp(42px, 5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.hero-title span { color: var(--cyan); }
+.hero-subtitle {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--text-mid);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+.hero-stats {
+  display: flex; gap: 32px;
+  margin-bottom: 40px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+.stat-item { }
+.stat-n {
+  font-family: var(--sans);
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--amber);
+  line-height: 1;
+}
+.stat-l {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+.btn-primary {
+  background: var(--amber);
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { background: #ffc04a; transform: translateY(-1px); }
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  text-decoration: none;
+  border: 1px solid var(--border2);
+  transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-secondary:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ── Terminal window ── */
+.terminal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  box-shadow: 0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.6), 0 0 80px rgba(0,229,255,0.03);
+  position: relative;
+}
+.terminal-bar {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.t-dots { display: flex; gap: 6px; }
+.t-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.t-dot.red   { background: #ff5f57; }
+.t-dot.amber { background: #febc2e; }
+.t-dot.green { background: #28c840; }
+.t-title {
+  flex: 1; text-align: center;
+  font-size: 11px; color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+.terminal-body {
+  padding: 20px 24px;
+  font-size: 12px;
+  line-height: 1.8;
+  min-height: 380px;
+  overflow: hidden;
+}
+.t-line { display: flex; gap: 8px; opacity: 0; }
+.t-line.visible { opacity: 1; }
+.t-prompt { color: var(--amber); flex-shrink: 0; }
+.t-cmd { color: var(--cyan); }
+.t-out { color: var(--text-mid); padding-left: 16px; }
+.t-sep { color: var(--text-dim); padding-left: 16px; }
+.t-high { color: var(--red); padding-left: 16px; font-weight: 700; }
+.t-med  { color: var(--amber); padding-left: 16px; }
+.t-low  { color: var(--green); padding-left: 16px; }
+.t-sum  { color: var(--cyan); padding-left: 16px; font-weight: 700; }
+.t-blank { height: 8px; }
+.cursor {
+  display: inline-block;
+  width: 8px; height: 14px;
+  background: var(--amber);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── Section headers ── */
+.section { padding: 100px 0; }
+.section-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::before {
+  content: '//';
+  color: var(--text-dim);
+}
+.section-title {
+  font-family: var(--sans);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-bottom: 16px;
+}
+.section-title span { color: var(--cyan); }
+.section-desc {
+  color: var(--text-mid);
+  max-width: 560px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ── Detectors grid ── */
+.detectors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-top: 56px;
+}
+.detector-card {
+  background: var(--bg2);
+  padding: 32px;
+  transition: background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.detector-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.detector-card:hover { background: var(--bg3); }
+.detector-card:hover::before { transform: scaleX(1); }
+.detector-icon {
+  width: 40px; height: 40px;
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  margin-bottom: 20px;
+  background: var(--bg);
+}
+.detector-name {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.detector-desc {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.detector-config {
+  font-size: 11px;
+  color: var(--cyan);
+  background: rgba(0,229,255,0.05);
+  border: 1px solid rgba(0,229,255,0.15);
+  padding: 6px 12px;
+  display: inline-block;
+  letter-spacing: 0.05em;
+}
+.sev-high   { border-left: 3px solid var(--red); }
+.sev-medium { border-left: 3px solid var(--amber); }
+.sev-low    { border-left: 3px solid var(--green); }
+
+/* ── Architecture ── */
+.arch-section { padding: 100px 0; }
+.arch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: start;
+  margin-top: 56px;
+}
+.arch-layers { display: flex; flex-direction: column; gap: 2px; }
+.arch-layer {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  display: flex; align-items: center; gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.arch-layer:hover, .arch-layer.active {
+  border-color: var(--amber);
+  background: var(--bg3);
+}
+.arch-layer.active::after {
+  content: '';
+  position: absolute;
+  right: -33px; top: 50%;
+  transform: translateY(-50%);
+  border: 8px solid transparent;
+  border-left-color: var(--amber);
+}
+.layer-num {
+  font-size: 11px;
+  color: var(--amber);
+  width: 24px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+.layer-name {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 700;
+}
+.layer-files {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+.arch-detail {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  padding: 32px;
+  min-height: 320px;
+  position: sticky;
+  top: 80px;
+}
+.arch-detail-title {
+  font-family: var(--sans);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.arch-detail-sub {
+  font-size: 11px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.arch-detail-desc {
+  color: var(--text-mid);
+  font-size: 13px;
+  line-height: 1.8;
+  margin-bottom: 24px;
+}
+.arch-files-list { display: flex; flex-direction: column; gap: 6px; }
+.arch-file {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  background: var(--bg);
+  border-left: 2px solid var(--border2);
+  display: flex; align-items: center; gap: 8px;
+}
+.arch-file .file-name { color: var(--cyan); }
+
+/* ── Quick start ── */
+.quickstart { padding: 100px 0; }
+.qs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-top: 56px;
+}
+.qs-step {
+  background: var(--bg2);
+  padding: 40px;
+}
+.step-num {
+  font-family: var(--sans);
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--border2);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.step-title {
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+}
+.step-desc {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+}
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  font-size: 12px;
+  color: var(--cyan);
+  position: relative;
+  overflow-x: auto;
+}
+.code-block .comment { color: var(--text-dim); }
+.code-block .flag    { color: var(--amber); }
+.copy-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: var(--border2);
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn:hover { color: var(--amber); background: var(--border); }
+.copy-btn.copied { color: var(--green); }
+
+/* ── Output formats ── */
+.formats { padding: 100px 0; }
+.formats-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  margin-top: 56px;
+}
+.fmt-tab {
+  padding: 14px 28px;
+  background: var(--bg2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.fmt-tab:hover { color: var(--text); background: var(--bg3); }
+.fmt-tab.active { background: var(--bg3); color: var(--amber); }
+.fmt-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 32px;
+  display: none;
+  min-height: 280px;
+}
+.fmt-panel.active { display: block; }
+.fmt-output {
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ── Badges / metrics ── */
+.metrics { padding: 100px 0; }
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-top: 56px;
+}
+.metric-card {
+  background: var(--bg2);
+  padding: 40px 32px;
+  text-align: center;
+  transition: background 0.2s;
+}
+.metric-card:hover { background: var(--bg3); }
+.metric-n {
+  font-family: var(--sans);
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.metric-l {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ── Author strip ── */
+.author-strip {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 60px 0;
+  background: var(--bg2);
+}
+.author-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 40px;
+}
+.author-info { display: flex; align-items: center; gap: 24px; }
+.author-avatar {
+  width: 64px; height: 64px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--sans);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--amber);
+  flex-shrink: 0;
+}
+.author-name {
+  font-family: var(--sans);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+.author-handle {
+  font-size: 12px;
+  color: var(--cyan);
+  margin-top: 2px;
+}
+.author-bio {
+  color: var(--text-dim);
+  font-size: 12px;
+  max-width: 400px;
+  line-height: 1.7;
+}
+.author-links { display: flex; gap: 12px; }
+.author-link {
+  border: 1px solid var(--border2);
+  color: var(--text-mid);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.author-link:hover { border-color: var(--cyan); color: var(--cyan); }
+.author-link.primary { background: var(--amber); border-color: var(--amber); color: var(--bg); font-weight: 700; }
+.author-link.primary:hover { background: #ffc04a; }
+
+/* ── Footer ── */
+footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+}
+.footer-inner {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 24px; flex-wrap: wrap;
+}
+.footer-copy {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.footer-copy span { color: var(--amber); }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--cyan); }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.6s ease forwards; }
+.fade-up-1 { animation-delay: 0.1s; opacity: 0; }
+.fade-up-2 { animation-delay: 0.2s; opacity: 0; }
+.fade-up-3 { animation-delay: 0.3s; opacity: 0; }
+.fade-up-4 { animation-delay: 0.4s; opacity: 0; }
+.fade-up-5 { animation-delay: 0.5s; opacity: 0; }
+.fade-up-6 { animation-delay: 0.6s; opacity: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .hero-grid, .arch-grid, .qs-grid { grid-template-columns: 1fr; }
+  .arch-layer.active::after { display: none; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .author-inner { flex-direction: column; align-items: flex-start; }
+  .nav-links { display: none; }
+}
+@media (max-width: 600px) {
+  .wrap { padding: 0 20px; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .hero-stats { gap: 20px; }
+  .stat-n { font-size: 24px; }
+}
+
+/* ── Scroll reveal ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="glow-1"></div>
+<div class="glow-2"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <span class="nav-logo-bracket">[</span>csd<span class="nav-logo-bracket">]</span>
+      &nbsp;code-smell-detector
+    </a>
+    <div class="nav-links">
+      <a href="#detectors">Detectors</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#author">Author</a>
+    </div>
+    <a href="https://github.com/sammykasango/code-smell-detector" class="nav-cta" target="_blank">
+      ★ Star on GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-eyebrow fade-up fade-up-1">C++17 Static Analysis Tool</div>
+        <h1 class="hero-title fade-up fade-up-2">
+          Find Code<br/><span>Smells</span><br/>Instantly.
+        </h1>
+        <p class="hero-subtitle fade-up fade-up-3">
+          7 detectors. Zero dependencies.<br/>One binary. Any C++ codebase.
+        </p>
+        <div class="hero-stats fade-up fade-up-4">
+          <div class="stat-item">
+            <div class="stat-n">7</div>
+            <div class="stat-l">Detectors</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-n">84</div>
+            <div class="stat-l">Tests</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-n">33</div>
+            <div class="stat-l">Source Files</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-n">0</div>
+            <div class="stat-l">Dependencies</div>
+          </div>
+        </div>
+        <div class="hero-actions fade-up fade-up-5">
+          <a href="#quickstart" class="btn-primary">→ Get Started</a>
+          <a href="https://github.com/sammykasango/code-smell-detector" class="btn-secondary" target="_blank">⎋ View Source</a>
+        </div>
+      </div>
+
+      <!-- Live terminal demo -->
+      <div class="fade-up fade-up-6">
+        <div class="terminal" id="heroTerminal">
+          <div class="terminal-bar">
+            <div class="t-dots">
+              <div class="t-dot red"></div>
+              <div class="t-dot amber"></div>
+              <div class="t-dot green"></div>
+            </div>
+            <div class="t-title">smell-detector — zsh — 80×24</div>
+          </div>
+          <div class="terminal-body" id="termBody">
+            <!-- Lines injected by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DETECTORS -->
+<section class="section" id="detectors">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="section-label">Detection Engine</div>
+      <h2 class="section-title">7 Detectors.<br/><span>Every Smell Covered.</span></h2>
+      <p class="section-desc">Each detector is a self-contained module — enable, disable, or tune thresholds independently via <code style="color:var(--amber)">.smellrc</code>.</p>
+    </div>
+
+    <div class="detectors-grid reveal">
+
+      <div class="detector-card sev-high">
+        <div class="detector-icon">🦠</div>
+        <div class="detector-name">God Class</div>
+        <div class="detector-desc">Flags classes with too many methods AND fields — a class that does everything is a class that does nothing well.</div>
+        <div class="detector-config">max_class_methods = 20 &nbsp;|&nbsp; max_class_fields = 15</div>
+      </div>
+
+      <div class="detector-card sev-high">
+        <div class="detector-icon">📏</div>
+        <div class="detector-name">Long Function</div>
+        <div class="detector-desc">A function that is too long is doing too many things. Flags bodies exceeding the configurable line threshold.</div>
+        <div class="detector-config">max_function_lines = 50</div>
+      </div>
+
+      <div class="detector-card sev-medium">
+        <div class="detector-icon">📋</div>
+        <div class="detector-name">Long Parameter List</div>
+        <div class="detector-desc">Too many parameters indicate a function knows too much about its callers. Group related params into objects.</div>
+        <div class="detector-config">max_parameters = 4</div>
+      </div>
+
+      <div class="detector-card sev-high">
+        <div class="detector-icon">♊</div>
+        <div class="detector-name">Duplicate Code</div>
+        <div class="detector-desc">Structurally identical functions via fingerprint hashing. Duplicated logic is a maintenance trap — extract it.</div>
+        <div class="detector-config">duplicate_threshold = 0.85</div>
+      </div>
+
+      <div class="detector-card sev-medium">
+        <div class="detector-icon">👻</div>
+        <div class="detector-name">Dead Code</div>
+        <div class="detector-desc">Two-pass reference analysis: collect all definitions, collect all references, diff them. Unreferenced = dead.</div>
+        <div class="detector-config">two-pass heuristic analysis</div>
+      </div>
+
+      <div class="detector-card sev-low">
+        <div class="detector-icon">🔢</div>
+        <div class="detector-name">Magic Numbers</div>
+        <div class="detector-desc">Bare numeric literals carry no meaning. <code style="color:var(--amber)">86400</code> tells you nothing. <code style="color:var(--amber)">SECONDS_PER_DAY</code> tells you everything.</div>
+        <div class="detector-config">allowed_literals = 0, 1, -1, 2</div>
+      </div>
+
+      <div class="detector-card sev-medium" style="grid-column: span 1;">
+        <div class="detector-icon">🌀</div>
+        <div class="detector-name">Deep Nesting</div>
+        <div class="detector-desc">Each nesting level adds a condition the reader must hold in memory. Use early returns and guard clauses instead.</div>
+        <div class="detector-config">max_nesting_depth = 4</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="arch-section" id="architecture">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="section-label">System Design</div>
+      <h2 class="section-title">Modular.<br/><span>Extensible by Design.</span></h2>
+      <p class="section-desc">5-stage pipeline built on Visitor, Strategy, Factory and Template Method patterns. Adding a new detector takes one file and one registration line.</p>
+    </div>
+
+    <div class="arch-grid reveal">
+      <div class="arch-layers" id="archLayers">
+        <div class="arch-layer active" data-layer="0">
+          <span class="layer-num">01</span>
+          <span class="layer-name">Lexer</span>
+          <span class="layer-files">Token.h · Lexer.h/cpp</span>
+        </div>
+        <div class="arch-layer" data-layer="1">
+          <span class="layer-num">02</span>
+          <span class="layer-name">Parser / AST</span>
+          <span class="layer-files">9 node files · ASTBuilder</span>
+        </div>
+        <div class="arch-layer" data-layer="2">
+          <span class="layer-num">03</span>
+          <span class="layer-name">Detectors</span>
+          <span class="layer-files">SmellDetector + 7 detectors</span>
+        </div>
+        <div class="arch-layer" data-layer="3">
+          <span class="layer-num">04</span>
+          <span class="layer-name">Engine + Factory</span>
+          <span class="layer-files">DetectionEngine · DetectorFactory</span>
+        </div>
+        <div class="arch-layer" data-layer="4">
+          <span class="layer-num">05</span>
+          <span class="layer-name">Report + Formatters</span>
+          <span class="layer-files">Violation · Report · 3 formatters</span>
+        </div>
+      </div>
+
+      <div class="arch-detail" id="archDetail">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section class="quickstart" id="quickstart">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="section-label">Installation</div>
+      <h2 class="section-title">Up and Running<br/><span>in 60 Seconds.</span></h2>
+      <p class="section-desc">One compiler. One command. Works on Linux, macOS, and Windows with MinGW or MSVC.</p>
+    </div>
+
+    <div class="qs-grid reveal">
+      <div class="qs-step">
+        <div class="step-num">01</div>
+        <div class="step-title">Clone the repo</div>
+        <div class="step-desc">Get the source code from GitHub. No submodules, no package manager.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <span class="comment"># Clone</span>
+git clone https://github.com/sammykasango/code-smell-detector.git
+cd code-smell-detector
+mkdir build</div>
+      </div>
+
+      <div class="qs-step">
+        <div class="step-num">02</div>
+        <div class="step-title">Build with g++</div>
+        <div class="step-desc">Single compile command — all you need is a C++17-capable compiler.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+g++ <span class="flag">-std=c++17</span> -Wall -O2 <span class="flag">-Isrc</span> \
+    src/main.cpp \
+    src/lexer/Lexer.cpp \
+    src/parser/ASTBuilder.cpp \
+    -o build/smell-detector</div>
+      </div>
+
+      <div class="qs-step">
+        <div class="step-num">03</div>
+        <div class="step-title">Analyze your code</div>
+        <div class="step-desc">Point it at a file, a folder, or your entire project src directory.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <span class="comment"># Single file</span>
+./build/smell-detector MyCode.cpp
+
+<span class="comment"># Entire directory</span>
+./build/smell-detector src/</div>
+      </div>
+
+      <div class="qs-step">
+        <div class="step-num">04</div>
+        <div class="step-title">Export your report</div>
+        <div class="step-desc">Three output formats built in. Use JSON for CI pipelines, HTML for sharing.</div>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          <span class="comment"># JSON for CI</span>
+./build/smell-detector <span class="flag">--format json</span> \
+    --output report.json src/
+
+<span class="comment"># HTML dashboard</span>
+./build/smell-detector <span class="flag">--format html</span> \
+    --output report.html src/</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OUTPUT FORMATS -->
+<section class="formats section">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="section-label">Output Formats</div>
+      <h2 class="section-title">Three Formats.<br/><span>One Command Flag.</span></h2>
+    </div>
+
+    <div class="reveal" style="margin-top:56px;">
+      <div class="formats-tabs">
+        <button class="fmt-tab active" onclick="switchTab(this,'console')">Console</button>
+        <button class="fmt-tab" onclick="switchTab(this,'json')">JSON</button>
+        <button class="fmt-tab" onclick="switchTab(this,'html')">HTML</button>
+      </div>
+
+      <div class="fmt-panel active" id="tab-console">
+        <div class="fmt-output"><span style="color:var(--text-dim)">================================================================
+  CODE SMELL REPORT
+================================================================</span>
+
+  File: <span style="color:var(--cyan)">src/OrderProcessor.cpp</span>
+
+  <span style="color:var(--red)">[HIGH  ]</span> Line 5   | GodClass
+               | Class 'OrderProcessor' has 22 methods and 16 fields
+               | likely a God Class (max: 20 methods, 15 fields)
+
+  <span style="color:var(--amber)">[MEDIUM]</span> Line 74  | DeepNesting
+               | Nesting depth 5 in function 'checkEligibility'
+               | exceeds max (4)
+
+  <span style="color:var(--green)">[LOW   ]</span> Line 60  | MagicNumber
+               | Magic number '350' — replace with a named constant
+
+<span style="color:var(--text-dim)">----------------------------------------------------------------</span>
+  Summary: <span style="color:var(--cyan)">32 violation(s)</span> across 1 file(s)
+  High: <span style="color:var(--red)">1</span>   Medium: <span style="color:var(--amber)">26</span>   Low: <span style="color:var(--green)">5</span>
+</div>
+      </div>
+
+      <div class="fmt-panel" id="tab-json">
+        <div class="fmt-output"><span style="color:var(--text-dim)">{</span>
+  <span style="color:var(--cyan)">"summary"</span>: <span style="color:var(--text-dim)">{</span>
+    <span style="color:var(--cyan)">"total_violations"</span>: <span style="color:var(--amber)">32</span>,
+    <span style="color:var(--cyan)">"files_analyzed"</span>:   <span style="color:var(--amber)">1</span>,
+    <span style="color:var(--cyan)">"high"</span>:              <span style="color:var(--amber)">1</span>,
+    <span style="color:var(--cyan)">"medium"</span>:            <span style="color:var(--amber)">26</span>,
+    <span style="color:var(--cyan)">"low"</span>:               <span style="color:var(--amber)">5</span>
+  <span style="color:var(--text-dim)">},</span>
+  <span style="color:var(--cyan)">"violations"</span>: <span style="color:var(--text-dim)">[</span>
+    <span style="color:var(--text-dim)">{</span>
+      <span style="color:var(--cyan)">"file"</span>:     <span style="color:var(--green)">"src/OrderProcessor.cpp"</span>,
+      <span style="color:var(--cyan)">"line"</span>:     <span style="color:var(--amber)">5</span>,
+      <span style="color:var(--cyan)">"smell"</span>:    <span style="color:var(--green)">"GodClass"</span>,
+      <span style="color:var(--cyan)">"severity"</span>: <span style="color:var(--red)">"HIGH"</span>,
+      <span style="color:var(--cyan)">"message"</span>:  <span style="color:var(--green)">"Class 'OrderProcessor' has 22 methods..."</span>
+    <span style="color:var(--text-dim)">}</span>
+  <span style="color:var(--text-dim)">]</span>
+<span style="color:var(--text-dim)">}</span>
+</div>
+      </div>
+
+      <div class="fmt-panel" id="tab-html">
+        <div class="fmt-output">  <span style="color:var(--text-dim)">Self-contained HTML dashboard — dark themed,</span>
+  <span style="color:var(--text-dim)">sortable table, severity badges, summary cards.</span>
+  <span style="color:var(--text-dim)">No external dependencies. Open in any browser.</span>
+
+  <span style="color:var(--amber)">--format html --output report.html src/</span>
+
+  <span style="color:var(--cyan)">Includes:</span>
+  ├── Summary cards  (Total / High / Medium / Low)
+  ├── Per-file breakdown with line references
+  ├── Severity badges  [HIGH] [MEDIUM] [LOW]
+  └── Dark-mode styled, JetBrains Mono font</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- METRICS -->
+<section class="metrics">
+  <div class="wrap">
+    <div class="metrics-grid reveal">
+      <div class="metric-card">
+        <div class="metric-n" style="color:var(--amber)">C++17</div>
+        <div class="metric-l">Language Standard</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-n" style="color:var(--cyan)">84</div>
+        <div class="metric-l">Tests Passing</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-n" style="color:var(--green)">33</div>
+        <div class="metric-l">Source Files</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-n" style="color:var(--red)">0</div>
+        <div class="metric-l">Dependencies</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AUTHOR -->
+<div class="author-strip" id="author">
+  <div class="wrap">
+    <div class="author-inner reveal">
+      <div class="author-info">
+        <div class="author-avatar">SK</div>
+        <div>
+          <div class="author-name">Sammy M. Kasango</div>
+          <div class="author-handle">@sammykasango</div>
+        </div>
+      </div>
+      <div class="author-bio">
+        Systems Software &amp; Network Engineer based in Nairobi, Kenya.
+        Building tools at the intersection of engineering depth and design sensibility.
+      </div>
+      <div class="author-links">
+        <a href="https://github.com/sammykasango" class="author-link" target="_blank">⎋ GitHub</a>
+        <a href="https://sammykasango.github.io" class="author-link primary" target="_blank">→ Portfolio</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <div class="footer-copy">
+        <span>[csd]</span> Code Smell Detector · MIT License · Built by Sammy M. Kasango
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/sammykasango/code-smell-detector" target="_blank">GitHub</a>
+        <a href="https://github.com/sammykasango/code-smell-detector" target="_blank">Issues</a>
+        <a href="https://sammykasango.github.io" target="_blank">Portfolio</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Terminal animation ──────────────────────────────────────────────────────
+const lines = [
+  { type: 'cmd',   text: '$ ./build/smell-detector my_sample.cpp' },
+  { type: 'out',   text: 'Running 7 detector(s)...' },
+  { type: 'blank' },
+  { type: 'sep',   text: '================================================================' },
+  { type: 'out',   text: '  CODE SMELL REPORT' },
+  { type: 'sep',   text: '================================================================' },
+  { type: 'blank' },
+  { type: 'out',   text: '  File: my_sample.cpp' },
+  { type: 'blank' },
+  { type: 'high',  text: '  [HIGH  ] Line 5   | GodClass' },
+  { type: 'out',   text: '           | 22 methods and 16 fields' },
+  { type: 'blank' },
+  { type: 'med',   text: '  [MEDIUM] Line 74  | DeepNesting' },
+  { type: 'out',   text: '           | Nesting depth 5 exceeds max (4)' },
+  { type: 'blank' },
+  { type: 'low',   text: '  [LOW   ] Line 60  | MagicNumber' },
+  { type: 'out',   text: "           | '350' — replace with a named constant" },
+  { type: 'blank' },
+  { type: 'sep',   text: '----------------------------------------------------------------' },
+  { type: 'sum',   text: '  Summary: 32 violation(s) across 1 file(s)' },
+  { type: 'sum',   text: '  High: 1   Medium: 26   Low: 5' },
+  { type: 'sep',   text: '================================================================' },
+  { type: 'cursor' },
+];
+
+const termBody = document.getElementById('termBody');
+let lineIndex = 0;
+
+function buildLine(l) {
+  const div = document.createElement('div');
+  div.className = 't-line';
+  if (l.type === 'blank') { div.className = 't-blank'; div.style.opacity = 1; termBody.appendChild(div); return; }
+  if (l.type === 'cursor') {
+    div.innerHTML = `<span class="t-out"><span class="cursor"></span></span>`;
+    div.style.opacity = 1;
+    termBody.appendChild(div);
+    return;
+  }
+  const cls = {
+    cmd: 't-cmd', out: 't-out', sep: 't-sep',
+    high: 't-high', med: 't-med', low: 't-low', sum: 't-sum'
+  }[l.type] || 't-out';
+  div.innerHTML = `<span class="${cls}">${l.text}</span>`;
+  termBody.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('visible'));
+}
+
+function runTerminal() {
+  if (lineIndex >= lines.length) return;
+  buildLine(lines[lineIndex++]);
+  const delay = lines[lineIndex - 1]?.type === 'blank' ? 40
+              : lines[lineIndex - 1]?.type === 'cmd'   ? 600
+              : 80;
+  setTimeout(runTerminal, delay);
+}
+
+setTimeout(runTerminal, 900);
+
+// ── Scroll reveal ───────────────────────────────────────────────────────────
+const revealEls = document.querySelectorAll('.reveal');
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      e.target.style.transitionDelay = '0s';
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+revealEls.forEach(el => revealObs.observe(el));
+
+// ── Architecture detail ─────────────────────────────────────────────────────
+const archData = [
+  {
+    name: 'Lexer', sub: 'Layer 01 — Tokenizer',
+    desc: 'Reads raw C++ source text into a flat token stream. Handles keywords, operators, identifiers, literals, comments, string/char literals, and preprocessor directives. Tracks line and column for every token.',
+    files: [
+      { name: 'Token.h',  desc: '50+ token types' },
+      { name: 'Lexer.h',  desc: 'Tokenizer interface' },
+      { name: 'Lexer.cpp',desc: 'Full tokenizer implementation' },
+    ]
+  },
+  {
+    name: 'Parser / AST', sub: 'Layer 02 — Recursive Descent Parser',
+    desc: 'Consumes the token stream and builds a typed AST rooted at TranslationUnitNode. Each node type lives in its own file. The circular dependency between ASTNode and ASTVisitor is resolved by defining accept() inline in ASTVisitor.h.',
+    files: [
+      { name: 'SourceLocation.h',    desc: 'File / line / col struct' },
+      { name: 'ASTNode.h',           desc: 'Abstract base node' },
+      { name: 'FunctionNode.h',      desc: 'Function definition' },
+      { name: 'ClassNode.h',         desc: 'Class/struct definition' },
+      { name: 'BlockNode.h',         desc: 'Scoped block { ... }' },
+      { name: 'ExpressionNode.h',    desc: 'Expressions and literals' },
+      { name: 'ASTVisitor.h',        desc: 'Visitor interface + accept()' },
+      { name: 'ASTBuilder.h/cpp',    desc: 'Recursive-descent parser' },
+    ]
+  },
+  {
+    name: 'Detectors', sub: 'Layer 03 — Smell Analyzers',
+    desc: 'Each detector is a standalone module extending SmellDetector. Uses the Template Method pattern — analyze() is the fixed skeleton, visit() overrides contain the logic. Adding a new detector requires zero changes to existing code.',
+    files: [
+      { name: 'SmellDetector.h',          desc: 'Abstract base + tree walker' },
+      { name: 'LongFunctionDetector.h',   desc: '> max_function_lines' },
+      { name: 'GodClassDetector.h',       desc: '> max methods + fields' },
+      { name: 'DeadCodeDetector.h',       desc: 'Two-pass reference analysis' },
+      { name: 'MagicNumberDetector.h',    desc: 'Numeric literal scanner' },
+      { name: 'DeepNestingDetector.h',    desc: 'Block depth tracker' },
+      { name: 'DuplicateCodeDetector.h',  desc: 'Structural fingerprinting' },
+    ]
+  },
+  {
+    name: 'Engine + Factory', sub: 'Layer 04 — Orchestration',
+    desc: 'DetectionEngine owns all registered detectors and runs them against each parsed AST. DetectorFactory reads the config and instantiates the correct set of detectors — adding a detector means one registration line here.',
+    files: [
+      { name: 'DetectionEngine.h',  desc: 'Runs all detectors, aggregates violations' },
+      { name: 'DetectorFactory.h',  desc: 'Config-driven detector instantiation' },
+    ]
+  },
+  {
+    name: 'Report + Formatters', sub: 'Layer 05 — Output',
+    desc: 'Violation is the atomic output unit. Report aggregates them. ReportFormatter is an abstract base — three concrete formatters produce console, JSON, and HTML output. FormatterFactory selects the right one from the --format flag.',
+    files: [
+      { name: 'Violation.h',        desc: 'Single finding data model' },
+      { name: 'Report.h',           desc: 'Aggregates + sorts violations' },
+      { name: 'ReportFormatter.h',  desc: 'Abstract base class' },
+      { name: 'ConsoleFormatter.h', desc: 'Terminal table output' },
+      { name: 'JSONFormatter.h',    desc: 'Structured CI output' },
+      { name: 'HTMLFormatter.h',    desc: 'Dark-themed dashboard' },
+      { name: 'FormatterFactory.h', desc: 'Creates formatter from flag string' },
+    ]
+  },
+];
+
+const archDetail = document.getElementById('archDetail');
+
+function renderArchDetail(idx) {
+  const d = archData[idx];
+  archDetail.innerHTML = `
+    <div class="arch-detail-title">${d.name}</div>
+    <div class="arch-detail-sub">${d.sub}</div>
+    <div class="arch-detail-desc">${d.desc}</div>
+    <div class="arch-files-list">
+      ${d.files.map(f => `
+        <div class="arch-file">
+          <span class="file-name">${f.name}</span>
+          <span style="color:var(--text-dim)">— ${f.desc}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+renderArchDetail(0);
+
+document.querySelectorAll('.arch-layer').forEach(layer => {
+  layer.addEventListener('click', () => {
+    document.querySelectorAll('.arch-layer').forEach(l => l.classList.remove('active'));
+    layer.classList.add('active');
+    renderArchDetail(parseInt(layer.dataset.layer));
+  });
+});
+
+// ── Format tabs ─────────────────────────────────────────────────────────────
+function switchTab(btn, id) {
+  document.querySelectorAll('.fmt-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.fmt-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ── Copy buttons ────────────────────────────────────────────────────────────
+function copyCode(btn) {
+  const block = btn.parentElement;
+  const text = block.innerText.replace('copy\n','').replace('copied\n','').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── Counter animation ────────────────────────────────────────────────────────
+function animateCounter(el, target, suffix = '') {
+  let start = 0;
+  const step = Math.ceil(target / 40);
+  const timer = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = start + suffix;
+    if (start >= target) clearInterval(timer);
+  }, 30);
+}
+
+const metricObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const ns = e.target.querySelectorAll('.metric-n');
+      const targets = [0, 84, 33, 0];
+      const suffixes = ['', '', '', ''];
+      const labels = e.target.querySelectorAll('.metric-l');
+      ns.forEach((n, i) => {
+        if (n.textContent === 'C++17') return;
+        animateCounter(n, targets[i], suffixes[i]);
+      });
+      metricObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+
+const metricsGrid = document.querySelector('.metrics-grid');
+if (metricsGrid) metricObs.observe(metricsGrid);
+</script>
+</body>
+</html>
